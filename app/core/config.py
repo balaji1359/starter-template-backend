@@ -60,11 +60,6 @@ class Settings(BaseSettings):
         description="Maximum login attempts before lockout"
     )
     
-    # ===== OAUTH SETTINGS =====
-    GOOGLE_CLIENT_ID: str = Field(..., description="Google OAuth client ID")
-    GOOGLE_CLIENT_SECRET: str = Field(..., description="Google OAuth client secret")
-    GOOGLE_REDIRECT_URI: str = Field(..., description="Google OAuth redirect URI")
-    
     # Apple OAuth settings (optional)
     APPLE_CLIENT_ID: Optional[str] = Field(default=None, description="Apple OAuth client ID")
     APPLE_TEAM_ID: Optional[str] = Field(default=None, description="Apple OAuth team ID")

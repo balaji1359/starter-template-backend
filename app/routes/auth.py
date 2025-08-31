@@ -18,8 +18,8 @@ from app.models.token import SocialAccount
 from app.models.user import User
 from app.schemas.auth import (
     AppleSignInPayload,
-    GoogleChromeTokenRequest,
-    OAuthProvider,
+
+
     PasswordResetConfirm,
     PasswordResetRequest,
     UserLogin,
@@ -29,8 +29,8 @@ from app.schemas.token import LoginResponse, TokenResponse
 from app.schemas.user import UserInDB, UserOut
 from app.services.apple_auth import AppleAuthService
 from app.services.auth import AuthService
-from app.services.google_auth import GoogleAuthService
-from app.services.oauth import OAuthService
+
+
 from app.utils.exceptions import (
     conflict_exception,
     credentials_exception,
@@ -197,67 +197,9 @@ async def login(
         logger.error(f"Login error: {str(e)}")
         raise credentials_exception("An error occurred during authentication")
 
-@router.post("/oauth/{provider}", response_model=LoginResponse)
-async def oauth_login(
-    provider: str,
-    oauth_data: OAuthProvider,
-    db: AsyncSession = Depends(get_db),
-):
-    """Handle OAuth login for Google, Microsoft, and Apple"""
-    logger.info(f"OAuth login attempt for provider: {provider}")
-    oauth_service = OAuthService(db)
-    user, tokens = await oauth_service.authenticate_oauth(oauth_data)
 
-    return LoginResponse(
-        access_token=tokens["access_token"],
-        refresh_token=tokens["refresh_token"],
-        token_type="bearer",
-        access_token_expires_in=tokens.get("access_token_expires_in"),
-        refresh_token_expires_in=tokens.get("refresh_token_expires_in"),
-        access_token_expires_at=tokens.get("access_token_expires_at"),
-        refresh_token_expires_at=tokens.get("refresh_token_expires_at"),
-        is_revoked=tokens["is_revoked"],
-        user=UserOut.model_validate(user),
-        is_verified=user.is_verified,
-        message=None  # OAuth users are typically auto-verified
-    )
 
-@router.get("/oauth/{provider}/url")
-async def get_oauth_url(
-    provider: str,
-    redirect_uri: str,
-):
-    """Get OAuth authorization URL for the specified provider"""
-    if provider == "google":
-        return {
-            "url": f"https://accounts.google.com/o/oauth2/v2/auth?"
-                  f"client_id={settings.GOOGLE_CLIENT_ID}&"
-                  f"response_type=code&"
-                  f"scope=email profile&"
-                  f"redirect_uri={redirect_uri}"
-        }
-    elif provider == "microsoft":
-        return {
-            "url": f"https://login.microsoftonline.com/common/oauth2/v2.0/authorize?"
-                  f"client_id={settings.MICROSOFT_CLIENT_ID}&"
-                  f"response_type=code&"
-                  f"scope=User.Read email&"
-                  f"redirect_uri={redirect_uri}"
-        }
-    elif provider == "apple":
-        return {
-            "url": f"https://appleid.apple.com/auth/authorize?"
-                  f"client_id={settings.APPLE_CLIENT_ID}&"
-                  f"redirect_uri={redirect_uri}&"
-                  f"response_type=code id_token&"
-                  f"scope=email name&"
-                  f"response_mode=form_post"
-        }
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported OAuth provider"
-        )
+
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
@@ -338,11 +280,7 @@ async def list_providers() -> Dict[str, Any]:
     """List available social auth providers."""
     return {
         "providers": [
-            {
-                "name": "google",
-                "enabled": True,
-                "url": "/api/v1/auth/google/login"
-            },
+
             {
                 "name": "apple",
                 "enabled": bool(settings.APPLE_CLIENT_ID),
@@ -351,73 +289,9 @@ async def list_providers() -> Dict[str, Any]:
         ]
     }
 
-@router.get("/google/login")
-async def google_login(
-    db: AsyncSession = Depends(get_db)
-) -> Dict[str, str]:
-    """Get Google OAuth URL for client-side redirect."""
-    google_auth = GoogleAuthService(db)
-    auth_url = await google_auth.get_google_auth_url()
-    return {"url": auth_url}
 
-@router.get("/google/callback")
-async def google_callback(
-    code: str,
-    state: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
-):
-    """Handle Google OAuth callback and redirect to frontend with token."""
-    logger.info(f"Received Google callback with state: {state}")
-    logger.debug(f"Authorization code: {code}")
 
-    google_auth = GoogleAuthService(db)
 
-    try:
-        # Exchange code for token
-        logger.info("Attempting to exchange code for token")
-        tokens = await google_auth.exchange_code_for_token(code)
-        access_token = tokens.get("access_token")
-
-        if not access_token:
-            logger.error("No access token received from Google")
-            return RedirectResponse(
-                url=f"{settings.FRONTEND_URL}/auth/callback?error=token_exchange_failed"
-            )
-
-        # Get user info from Google
-        logger.info("Fetching user info from Google")
-        google_user = await google_auth.get_google_user_info(access_token)
-        logger.info(f"Retrieved user info for email: {google_user.get('email')}")
-
-        # Get or create user
-        logger.info("Getting or creating user")
-        user, auth_tokens = await google_auth.get_or_create_user(google_user)
-        logger.info(f"Successfully processed user: {user.email}")
-        print(settings.FRONTEND_URL)
-
-        # Redirect to frontend auth callback with tokens
-        return RedirectResponse(
-            url=(
-                f"{settings.FRONTEND_URL}/auth/callback"
-                f"?access_token={auth_tokens['access_token']}"
-                f"&refresh_token={auth_tokens['refresh_token']}"
-                f"&access_token_expires_in={auth_tokens['access_token_expires_in']}"
-                f"&refresh_token_expires_in={auth_tokens['refresh_token_expires_in']}"
-                f"&is_revoked={auth_tokens['is_revoked']}"
-                f"&user={UserOut.model_validate(user)}"
-            )
-        )
-
-    except HTTPException as e:
-        logger.error(f"HTTP error in Google callback: {str(e)}")
-        return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/auth/callback?error=token_exchange_failed"
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error in Google callback: {str(e)}")
-        return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/auth/callback?error=unexpected_error"
-        )
 
 # Apple Auth Routes
 @router.get("/apple/login")
@@ -525,65 +399,4 @@ async def disconnect_social_account(
     await db.delete(account)
     await db.commit()
 
-@router.post("/google/chrome-extension", response_model=LoginResponse)
-async def google_chrome_extension_auth(
-    request: Request,
-    token_data: GoogleChromeTokenRequest,
-    db: AsyncSession = Depends(get_db)
-) -> LoginResponse:
-    """
-    Authenticate Chrome extension users with Google token
-    
-    Args:
-        request: FastAPI request object
-        token_data: Google token data from Chrome extension
-        db: Database session
-        
-    Returns:
-        LoginResponse containing access and refresh tokens
-        
-    Raises:
-        HTTPException: For invalid tokens or authentication failures
-    """
-    logger.info(f"Chrome extension Google auth attempt from IP: {request.client.host}")
 
-    try:
-        google_auth = GoogleAuthService(db)
-
-        # Get user info from Google using the token
-        google_user = await google_auth.get_google_user_info(token_data.token)
-
-        if not google_user:
-            logger.warning(f"Invalid Google token from IP: {request.client.host}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid Google token"
-            )
-
-        # Get or create user and generate tokens
-        user, auth_tokens = await google_auth.get_or_create_user(google_user)
-
-        logger.info(f"Successful Chrome extension Google auth for user: {user.email}")
-
-        return LoginResponse(
-            access_token=auth_tokens["access_token"],
-            refresh_token=auth_tokens["refresh_token"],
-            token_type="bearer",
-            access_token_expires_in=auth_tokens["access_token_expires_in"],
-            refresh_token_expires_in=auth_tokens["refresh_token_expires_in"],
-            access_token_expires_at=auth_tokens.get("access_token_expires_at"),
-            refresh_token_expires_at=auth_tokens.get("refresh_token_expires_at"),
-            is_revoked=auth_tokens["is_revoked"],
-            user=UserOut.model_validate(user),
-            is_verified=user.is_verified,
-            message="Successfully logged in"
-        )
-
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        logger.error(f"Chrome extension Google auth error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred during authentication"
-        )

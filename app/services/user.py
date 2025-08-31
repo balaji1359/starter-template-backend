@@ -253,7 +253,7 @@ class UserService:
             from sqlalchemy import text
             
             await self.db.execute(
-                text("DELETE FROM linklibrary.users WHERE id = :user_id"),
+                text("DELETE FROM beekeeper.users WHERE id = :user_id"),
                 {"user_id": user_id}
             )
             await self.db.commit()

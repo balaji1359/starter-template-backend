@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Starting LinkLibrary Backend Server..."
+echo "Starting Beekeeper Backend Server..."
 echo
 
 # Check if virtual environment exists

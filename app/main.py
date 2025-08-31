@@ -220,7 +220,7 @@ def create_app() -> FastAPI:
     )
     
     # Configure logging levels for various components
-    _configure_additional_logging()
+    # _configure_additional_logging()
     
     # Add middleware in correct order
     _configure_middleware(app)

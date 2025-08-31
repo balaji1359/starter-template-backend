@@ -1,11 +1,8 @@
 from fastapi import APIRouter, Depends
 from app.dependencies.auth import get_current_active_user
 
-from app.routes import (
-    auth,
-    users
-
-)
+from . import auth
+from . import users
 
 
 api_router = APIRouter()

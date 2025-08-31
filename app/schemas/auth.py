@@ -54,32 +54,9 @@ class PasswordResetConfirm(BaseModel):
         return v
 
 
-class OAuthProvider(BaseModel):
-    provider: Literal["google", "microsoft", "apple"]
-    code: str
-    redirect_uri: str
-    id_token: Optional[str] = None  # Required for Apple Sign In
-
-
-class OAuthResponse(BaseModel):
-    access_token: str
-    token_type: str
-    user_info: dict
-
-
-class OAuthState(BaseModel):
-    provider: Literal["google", "microsoft", "apple"]
-    redirect_uri: str
-
-
 class AppleSignInPayload(BaseModel):
-    code: Optional[str] = None
+    """Schema for Apple Sign In payload"""
     id_token: str
     user: Optional[dict] = None
-    state: Optional[str] = None
 
 
-class GoogleChromeTokenRequest(BaseModel):
-    """Schema for Google Chrome extension token authentication"""
-    token: str
-    client_id: Optional[str] = None

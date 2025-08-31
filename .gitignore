@@ -74,3 +74,12 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Firebase credentials
+firebase-service-account.json
+*-service-account.json
+firebase-admin-sdk-*.json
+
+# Other sensitive files
+google-services.json
+GoogleService-Info.plist

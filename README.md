@@ -9,6 +9,7 @@ A FastAPI-based authentication system with OAuth support, built with SQLAlchemy 
 - **Password Management**: Secure password hashing and reset functionality
 - **Email Verification**: Email-based account verification
 - **OAuth Integration**: Google, Apple, and Microsoft authentication
+- **Firebase Authentication**: Optional Firebase Admin SDK integration
 - **Database**: PostgreSQL with Alembic migrations
 - **Security**: CSRF protection, rate limiting, secure headers
 
@@ -90,6 +91,9 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_REDIRECT_URI=http://localhost:3000/auth/google/callback
 
+# Firebase Admin SDK (Optional - for Firebase Authentication)
+FIREBASE_CREDENTIALS_PATH=./firebase-service-account.json
+
 # Frontend URL (for CORS)
 FRONTEND_URL=http://localhost:3000
 BACKEND_URL=http://localhost:8000
@@ -127,6 +131,34 @@ createdb beekeeper
 1. Create a Supabase project at [supabase.com](https://supabase.com)
 2. Get your database connection string from the project settings
 3. Update `DATABASE_URL` in your `.env` file
+
+### 6. Firebase Setup (Optional)
+
+If you're using Firebase Authentication:
+
+#### 1. Create Firebase Project
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Create a new project or use existing one
+3. Enable Authentication in the project
+
+#### 2. Generate Service Account Key
+1. Go to Project Settings → Service Accounts
+2. Click "Generate new private key"
+3. Save the JSON file as `firebase-service-account.json` in the backend directory
+
+#### 3. Configure Environment
+```bash
+# Add to your .env file
+FIREBASE_CREDENTIALS_PATH=./firebase-service-account.json
+```
+
+#### 4. Enable Authentication Methods
+In Firebase Console → Authentication → Sign-in method, enable:
+- Email/Password
+- Google (if using Google OAuth)
+- Any other providers you need
+
+**⚠️ Security Note**: Never commit `firebase-service-account.json` to version control. It's already added to `.gitignore`.
 
 ## 🗄️ Database Migrations with Alembic
 
@@ -272,8 +304,10 @@ backend/
 │   ├── routes/            # API routes
 │   │   └── auth.py        # Authentication endpoints
 │   ├── services/          # Business logic
-│   │   └── auth.py        # Authentication service
+│   │   ├── auth.py        # Authentication service
+│   │   └── firebase_auth.py # Firebase authentication service
 │   └── main.py            # FastAPI application
+├── firebase-service-account.json # Firebase credentials (gitignored)
 ├── .env                   # Environment variables
 ├── pyproject.toml         # Project dependencies
 └── README.md              # This file
