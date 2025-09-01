@@ -1,6 +1,6 @@
 from typing import Dict, Optional, Tuple
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 import firebase_admin
 from firebase_admin import auth, credentials
@@ -55,8 +55,7 @@ class FirebaseAuthService:
         if user:
             # Update user info
             user.full_name = firebase_user_info.get("name")
-            user.profile_image_url = firebase_user_info.get("picture")
-            user.updated_at = datetime.utcnow()
+            user.updated_at = datetime.now(timezone.utc)
             await self.db.commit()
         else:
             # Check if user exists with same email
@@ -70,12 +69,11 @@ class FirebaseAuthService:
                 user = User(
                     email=firebase_user_info["email"],
                     full_name=firebase_user_info.get("name"),
-                    profile_image_url=firebase_user_info.get("picture"),
                     is_active=True,
                     is_verified=True,
-                    password_hash="",  # No password for social auth
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
+                    hashed_password="",  # No password for social auth
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
                 )
                 self.db.add(user)
                 await self.db.commit()
@@ -96,7 +94,8 @@ class FirebaseAuthService:
                 social_account = SocialAccount(
                     provider="firebase",
                     provider_user_id=firebase_user_info["uid"],
-                    user_id=user.id
+                    user_id=user.id,
+                    created_at=datetime.now(timezone.utc)
                 )
                 self.db.add(social_account)
                 await self.db.commit()

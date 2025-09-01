@@ -18,8 +18,7 @@ from app.models.token import SocialAccount
 from app.models.user import User
 from app.schemas.auth import (
     AppleSignInPayload,
-
-
+    FirebaseSignInPayload,
     PasswordResetConfirm,
     PasswordResetRequest,
     UserLogin,
@@ -29,6 +28,7 @@ from app.schemas.token import LoginResponse, TokenResponse
 from app.schemas.user import UserInDB, UserOut
 from app.services.apple_auth import AppleAuthService
 from app.services.auth import AuthService
+from app.services.firebase_auth import FirebaseAuthService
 
 
 from app.utils.exceptions import (
@@ -352,6 +352,54 @@ async def apple_callback(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during Apple Sign In"
+        )
+
+@router.post("/firebase/verify", response_model=LoginResponse)
+async def firebase_verify(
+    firebase_data: FirebaseSignInPayload,
+    db: AsyncSession = Depends(get_db)
+) -> LoginResponse:
+    """Handle Firebase Sign In with ID token."""
+    logger.info("Received Firebase Sign In verification")
+
+    try:
+        firebase_auth = FirebaseAuthService(db)
+
+        # Verify Firebase ID token
+        firebase_user_info = firebase_auth.verify_firebase_token(firebase_data.firebase_token)
+        if not firebase_user_info:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Firebase ID token"
+            )
+
+        # Get or create user from Firebase profile
+        user, auth_tokens = await firebase_auth.get_or_create_user(firebase_user_info)
+
+        logger.info(f"Successfully processed Firebase Sign In for user: {user.email}")
+
+        return LoginResponse(
+            access_token=auth_tokens["access_token"],
+            refresh_token=auth_tokens["refresh_token"],
+            token_type="bearer",
+            access_token_expires_in=auth_tokens["access_token_expires_in"],
+            refresh_token_expires_in=auth_tokens["refresh_token_expires_in"],
+            access_token_expires_at=auth_tokens.get("access_token_expires_at"),
+            refresh_token_expires_at=auth_tokens.get("refresh_token_expires_at"),
+            is_revoked=auth_tokens["is_revoked"],
+            user=UserOut.model_validate(user),
+            is_verified=user.is_verified,
+            message="Successfully logged in with Firebase"
+        )
+
+    except HTTPException as he:
+        logger.error(f"HTTP error in Firebase Sign In: {str(he)}")
+        raise he
+    except Exception as e:
+        logger.error(f"Unexpected error in Firebase Sign In: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during Firebase Sign In"
         )
 
 @router.get("/accounts", response_model=Dict[str, Any])

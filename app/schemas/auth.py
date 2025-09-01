@@ -60,3 +60,8 @@ class AppleSignInPayload(BaseModel):
     user: Optional[dict] = None
 
 
+class FirebaseSignInPayload(BaseModel):
+    """Schema for Firebase Sign In payload"""
+    firebase_token: str
+
+

@@ -7,8 +7,8 @@ from sqlalchemy.dialects.postgresql import UUID
 class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
-    is_active: bool = True
-    is_superuser: bool = False
+    is_active: Optional[bool] = False
+    is_superuser: Optional[bool] = False
     
     # Account status compatibility field
     # If your DB model uses account_status but your Pydantic model expects is_active
@@ -59,9 +59,9 @@ class UserOut(BaseModel):
     id: int
     email: EmailStr
     full_name: Optional[str] = None
-    is_active: bool
+    is_active: Optional[bool] = False
     is_verified: bool
-    is_superuser: bool
+    is_superuser: Optional[bool] = False
     created_at: datetime
     
     class Config:
